@@ -3,13 +3,13 @@ package main.uk.ac.le.cs.CO3102;
 import org.apache.xerces.parsers.DOMParser;
 //import org.apache.xerces.parsers.SAXParser;
 import org.w3c.dom.Document;
+import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Stack;
 
 public class WebServiceParser {
 	
@@ -30,8 +30,7 @@ public class WebServiceParser {
 				}
 			}
 		  	System.out.println(doc.getDocumentElement().getNodeName());
-			String jsonResult = "";
-		  	jsonResult = traverse_tree(doc, jsonResult);
+			String jsonResult = traverse_tree(doc);
 	  		
 	  	   //or SAX
 			//WebServiceSAX SAXHandler = new WebServiceSAX();
@@ -46,9 +45,21 @@ public class WebServiceParser {
 	       }
     }
 
-	public static String traverse_tree(Node node, String current) {
+	public static String traverse_tree(Node node) {
 		//Task 3
 		String result = "";
+		
+		// Get all attributes of the element
+		NamedNodeMap attrList = node.getAttributes();
+		for(int iter = 0; iter < attrList.getLength(); ++iter) {
+			result += iter != attrList.getLength()-1 
+					? String.format("\t\"_%s\": \"%s\",\n"
+							, attrList.item(iter).getNodeName()
+							, attrList.item(iter).getNodeValue()) 
+					: String.format("\t\"_%s\": \"%s\"\n"
+							, attrList.item(iter).getNodeName()
+							, attrList.item(iter).getNodeValue());
+		}
 
 		if(node.getFirstChild() != null) {
 			Node currentNode = node.getFirstChild();
@@ -56,7 +67,7 @@ public class WebServiceParser {
 			while(currentNode.getNextSibling() != null) {
                 returnStringMap.computeIfAbsent(currentNode.getNodeName(), k -> new ArrayList<>());
 				returnStringMap.get(currentNode.getNodeName())
-						.add(traverse_tree(currentNode.getNextSibling(), result));
+						.add(traverse_tree(currentNode.getNextSibling()));
 			}
 
 			for(String key : returnStringMap.keySet()) {
@@ -68,19 +79,14 @@ public class WebServiceParser {
 								: String.format("\t%s\n", returnStringMap.get(key).get(i));
 
 					}
+					result += String.format("\"%s\": [\n%s\n]", key );
 					result += "]\n";
 				} else {
-					result += String.format("\"%s\": { \n", key );
-					for(int i = 0; i < returnStringMap.get(key).size(); i++) {
-						result += i != returnStringMap.get(key).size()-1
-								? String.format("\t%s,\n", returnStringMap.get(key).get(i))
-								: String.format("\t%s\n", returnStringMap.get(key).get(i));
-					}
-					result += "}\n";
+					result += String.format("\t%s\n", returnStringMap.get(key).get(0));
 				}
 			}
 		} else {
-
+			result = String.format("{\n %s\n}", result);
 		}
 
 		return result;
